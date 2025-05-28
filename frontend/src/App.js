@@ -13,8 +13,12 @@ import RaidGroupsList from './pages/raids/RaidGroupsList';
 import RaidGroupCreate from './pages/raids/RaidGroupCreate';
 import RaidGroupDetail from './pages/raids/RaidGroupDetail';
 
+// 장비 관리 컴포넌트들
+import Equipment from './pages/equipment/Equipment';
+import EquipmentEdit from './pages/equipment/EquipmentEdit';
+import CurrencyCalculator from './pages/equipment/CurrencyCalculator';
+
 // 페이지 컴포넌트들 (임시 - 나중에 실제 파일로 대체)
-const Equipment = () => <div className="p-4">장비 관리</div>;
 const Distribution = () => <div className="p-4">아이템 분배</div>;
 
 function App() {
@@ -61,6 +65,8 @@ function App() {
                 </PrivateRoute>
               }
             />
+            
+            {/* 장비 관리 라우트 */}
             <Route
               path="/equipment"
               element={
@@ -69,6 +75,23 @@ function App() {
                 </PrivateRoute>
               }
             />
+            <Route
+              path="/equipment/edit/:playerId/:setType"
+              element={
+                <PrivateRoute>
+                  <EquipmentEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/equipment/currency-calculator"
+              element={
+                <PrivateRoute>
+                  <CurrencyCalculator />
+                </PrivateRoute>
+              }
+            />
+            
             <Route
               path="/distribution"
               element={
