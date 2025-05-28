@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count, Sum
+from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from datetime import datetime, timedelta
@@ -179,6 +180,60 @@ class ItemViewSet(viewsets.ModelViewSet):
         if raid_id:
             queryset = queryset.filter(raid_id=raid_id)
         return queryset
+    
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        """아이템 생성 (재화 요구사항 포함)"""
+        data = request.data.copy()
+        currency_requirements = data.pop('currency_requirements', [])
+        
+        # 아이템 생성
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        item = serializer.save()
+        
+        # 재화 요구사항 생성
+        for req in currency_requirements:
+            CurrencyRequirement.objects.create(
+                item=item,
+                currency_id=req['currency_id'],
+                amount=req['amount']
+            )
+        
+        # 재화 정보를 포함한 시리얼라이저로 응답
+        response_serializer = self.get_serializer(item)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+    
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        """아이템 수정 (재화 요구사항 포함)"""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        data = request.data.copy()
+        currency_requirements = data.pop('currency_requirements', None)
+        
+        # 아이템 업데이트
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        item = serializer.save()
+        
+        # 재화 요구사항 업데이트 (제공된 경우에만)
+        if currency_requirements is not None:
+            # 기존 재화 요구사항 삭제
+            item.currency_requirements.all().delete()
+            
+            # 새로운 재화 요구사항 생성
+            for req in currency_requirements:
+                CurrencyRequirement.objects.create(
+                    item=item,
+                    currency_id=req['currency_id'],
+                    amount=req['amount']
+                )
+        
+        # 재화 정보를 포함한 시리얼라이저로 응답
+        response_serializer = self.get_serializer(item)
+        return Response(response_serializer.data)
 
 
 class CurrencyViewSet(viewsets.ModelViewSet):
@@ -211,15 +266,21 @@ class EquipmentSetViewSet(viewsets.ModelViewSet):
         if equipment_set.player.user != request.user:
             return Response({'error': '권한이 없습니다.'}, status=status.HTTP_403_FORBIDDEN)
         
-        serializer = EquipmentBulkCreateSerializer(data={
-            'equipment_set_id': equipment_set.id,
-            'items': request.data.get('items', [])
-        })
+        # 기존 장비 모두 삭제
+        equipment_set.equipments.all().delete()
         
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': '장비가 업데이트되었습니다.'})
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # 새로운 장비 생성
+        items = request.data.get('items', [])
+        for item_data in items:
+            Equipment.objects.create(
+                equipment_set=equipment_set,
+                item_id=item_data['item_id'],
+                is_pentamelded=item_data.get('is_pentamelded', False)
+            )
+        
+        # 업데이트된 세트 반환
+        serializer = self.get_serializer(equipment_set)
+        return Response(serializer.data)
 
 
 class ItemDistributionViewSet(viewsets.ModelViewSet):

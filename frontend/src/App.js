@@ -18,6 +18,10 @@ import Equipment from './pages/equipment/Equipment';
 import EquipmentEdit from './pages/equipment/EquipmentEdit';
 import CurrencyCalculator from './pages/equipment/CurrencyCalculator';
 
+// 관리자 컴포넌트들
+import ItemManagement from './pages/admin/ItemManagement';
+import ItemForm from './pages/admin/ItemForm';
+
 // 페이지 컴포넌트들 (임시 - 나중에 실제 파일로 대체)
 const Distribution = () => <div className="p-4">아이템 분배</div>;
 
@@ -88,6 +92,32 @@ function App() {
               element={
                 <PrivateRoute>
                   <CurrencyCalculator />
+                </PrivateRoute>
+              }
+            />
+            
+            {/* 관리자 라우트 */}
+            <Route
+              path="/admin/items"
+              element={
+                <PrivateRoute>
+                  <ItemManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/items/create"
+              element={
+                <PrivateRoute>
+                  <ItemForm />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/items/edit/:id"
+              element={
+                <PrivateRoute>
+                  <ItemForm />
                 </PrivateRoute>
               }
             />

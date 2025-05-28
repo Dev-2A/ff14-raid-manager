@@ -41,7 +41,7 @@ const Layout = ({ children }) => {
                       대시보드
                     </Link>
                     <Link
-                      to="raid-groups"
+                      to="/raid-groups"
                       className="text-gray-300 hover:text-white inline-flex items-center px-1 pt-1 text-sm font-medium"
                     >
                       공대 관리
@@ -58,6 +58,27 @@ const Layout = ({ children }) => {
                     >
                       아이템 분배
                     </Link>
+                    {/* 관리자 메뉴 추가 */}
+                    <div className="relative inline-flex items-center px-1 pt-1">
+                      <div className="group">
+                        <button className="text-gray-300 hover:text-white inline-flex items-center text-sm font-medium">
+                          관리자
+                          <svg className="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        <div className="hidden group-hover:block absolute left-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                          <div className="py-1">
+                            <Link
+                              to="/admin/items"
+                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              아이템 관리
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </>
                 )}
               </div>
@@ -149,10 +170,22 @@ const Layout = ({ children }) => {
                   >
                     아이템 분배
                   </Link>
+                  {/* 관리자 섹션 */}
+                  <div className="border-t border-gray-700 pt-2">
+                    <div className="px-3 py-2 text-base font-medium text-gray-400">
+                      관리자
+                    </div>
+                    <Link
+                      to="/admin/items"
+                      className="text-gray-300 hover:text-white block px-6 py-2 text-base font-medium"
+                    >
+                      아이템 관리
+                    </Link>
+                  </div>
                 </>
               )}
             </div>
-            <div className="pt-4 pb-3 border-t bordder-gray-700">
+            <div className="pt-4 pb-3 border-t border-gray-700">
               {isAuthenticated ? (
                 <>
                   <div className="px-4 text-gray-300 text-sm">
@@ -190,7 +223,7 @@ const Layout = ({ children }) => {
       </nav>
 
       {/* 메인 컨텐츠 */}
-      <main className="max-2-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {children}
       </main>
 

@@ -9,25 +9,24 @@ const ItemManagement = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
+  
   const [raids, setRaids] = useState([]);
   const [items, setItems] = useState([]);
   const [itemTypes, setItemTypes] = useState([]);
   const [currencies, setCurrencies] = useState([]);
-
+  
   const [selectedRaid, setSelectedRaid] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showExchangeItems, setShowExchangeItems] = useState(true);
 
   useEffect(() => {
     fetchInitialData();
   }, []);
 
   useEffect(() => {
-    if (selectedRaid) {
-      fetchItems();
-    }
-  }, [selectedRaid]);
+    fetchItems();
+  }, [selectedRaid, showExchangeItems]);
 
   const fetchInitialData = async () => {
     try {
@@ -37,19 +36,14 @@ const ItemManagement = () => {
         getItemTypes(),
         getCurrencies()
       ]);
-
+      
       const raidsList = Array.isArray(raidsData) ? raidsData : (raidsData.results || []);
       const typesList = Array.isArray(typesData) ? typesData : (typesData.results || []);
       const currenciesList = Array.isArray(currenciesData) ? currenciesData : (currenciesData.results || []);
-
+      
       setRaids(raidsList);
       setItemTypes(typesList);
       setCurrencies(currenciesList);
-
-      // 첫 번째 레이드 자동 선택
-      if (raidsList.length > 0) {
-        setSelectedRaid(raidsList[0].id.toString());
-      }
     } catch (err) {
       console.error('Failed to fetch initial data:', err);
       setError('데이터를 불러오는데 실패했습니다.');
@@ -60,7 +54,15 @@ const ItemManagement = () => {
 
   const fetchItems = async () => {
     try {
-      const itemsData = await getItems(selectedRaid);
+      let itemsData;
+      if (selectedRaid) {
+        // 특정 레이드 선택 시 해당 레이드 아이템만
+        itemsData = await getItems(selectedRaid);
+      } else {
+        // 전체 아이템 가져오기
+        itemsData = await getItems();
+      }
+      
       const itemsList = Array.isArray(itemsData) ? itemsData : (itemsData.results || []);
       setItems(itemsList);
     } catch (err) {
@@ -71,8 +73,17 @@ const ItemManagement = () => {
 
   // 필터링된 아이템 목록
   const filteredItems = items.filter(item => {
+    // 교환 아이템 필터
+    if (!showExchangeItems && !item.raid) return false;
+    if (selectedRaid === 'exchange' && item.raid) return false;
+    if (selectedRaid && selectedRaid !== 'exchange' && (!item.raid || item.raid.id !== parseInt(selectedRaid))) return false;
+    
+    // 타입 필터
     if (selectedType && item.item_type.id !== parseInt(selectedType)) return false;
+    
+    // 검색어 필터
     if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    
     return true;
   });
 
@@ -85,6 +96,52 @@ const ItemManagement = () => {
     acc[typeName].push(item);
     return acc;
   }, {});
+
+  // 재화 정보 포맷팅
+  const formatCurrencyInfo = (item) => {
+    if (!item.currency_requirements || item.currency_requirements.length === 0) {
+      return <span className="text-gray-400">필요 재화 없음</span>;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {item.currency_requirements.map(req => (
+          <span key={req.id} className="inline-flex items-center">
+            <span className="font-medium">{req.currency.name}:</span>
+            <span className="ml-1">{req.amount}개</span>
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  // 획득처 정보 포맷팅
+  const formatSourceInfo = (item) => {
+    // 보강 아이템인지 확인 (아이템명에 '보강'이 포함되어 있는지)
+    const isUpgradedItem = item.name.includes('보강');
+    
+    if (isUpgradedItem) {
+      return (
+        <span className="text-sm text-purple-600">
+          보강 아이템
+        </span>
+      );
+    }
+    
+    if (item.raid) {
+      return (
+        <span className="text-sm text-gray-600">
+          {item.raid.name} {item.floor}층
+        </span>
+      );
+    }
+    
+    return (
+      <span className="text-sm text-ff14-accent">
+        교환 아이템
+      </span>
+    );
+  };
 
   if (loading) {
     return (
@@ -110,13 +167,15 @@ const ItemManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              레이드
+              획득처
             </label>
             <select
               value={selectedRaid}
               onChange={(e) => setSelectedRaid(e.target.value)}
               className="input"
             >
+              <option value="">전체</option>
+              <option value="exchange">교환 아이템</option>
               {raids.map(raid => (
                 <option key={raid.id} value={raid.id}>
                   {raid.name} ({raid.tier})
@@ -158,12 +217,24 @@ const ItemManagement = () => {
           
           <div className="flex items-end">
             <Link
-              to={`/admin/items/create?raid=${selectedRaid}`}
+              to={`/admin/items/create${selectedRaid && selectedRaid !== 'exchange' ? `?raid=${selectedRaid}` : ''}`}
               className="btn btn-primary w-full"
             >
               아이템 추가
             </Link>
           </div>
+        </div>
+        
+        <div className="flex items-center">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={showExchangeItems}
+              onChange={(e) => setShowExchangeItems(e.target.checked)}
+              className="rounded text-ff14-accent focus:ring-ff14-accent"
+            />
+            <span className="ml-2 text-sm text-gray-700">교환 아이템 표시</span>
+          </label>
         </div>
       </div>
 
@@ -195,25 +266,21 @@ const ItemManagement = () => {
                           <span className="ml-2 text-sm text-gray-500">
                             IL{item.item_level}
                           </span>
-                          <span className="ml-2 px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-                            {item.floor}층
+                          <span className="ml-2">
+                            {formatSourceInfo(item)}
                           </span>
                         </div>
                         
                         <div className="mt-1 text-sm text-gray-600">
-                          {item.currency_requirements && item.currency_requirements.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {item.currency_requirements.map(req => (
-                                <span key={req.id} className="inline-flex items-center">
-                                  <span className="font-medium">{req.currency.name}:</span>
-                                  <span className="ml-1">{req.amount}개</span>
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">필요 재화 없음</span>
-                          )}
+                          {formatCurrencyInfo(item)}
                         </div>
+                        
+                        {/* 직업 제한 표시 */}
+                        {item.job_restrictions && item.job_restrictions.length > 0 && (
+                          <div className="mt-1 text-xs text-gray-500">
+                            직업 제한: {item.job_restrictions.map(job => job.name).join(', ')}
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex items-center space-x-2 ml-4">
@@ -231,6 +298,17 @@ const ItemManagement = () => {
             </div>
           ))
         )}
+      </div>
+      
+      {/* 범례 */}
+      <div className="mt-4 bg-gray-50 rounded-lg p-4">
+        <h4 className="text-sm font-medium text-gray-700 mb-2">범례</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600">
+          <div>• 레이드 드롭: 레이드에서 직접 획득</div>
+          <div>• 교환 아이템: 석판 등의 재화로 교환</div>
+          <div>• 보강 아이템: 기존 장비를 보강하여 획득</div>
+          <div>• 직업 제한: 특정 직업만 착용 가능</div>
+        </div>
       </div>
     </div>
   );

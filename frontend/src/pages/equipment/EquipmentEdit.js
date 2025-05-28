@@ -190,6 +190,19 @@ const EquipmentEdit = () => {
     });
   };
 
+  // 재화 정보를 포맷팅하는 함수
+  const formatCurrencyRequirements = (item) => {
+    if (!item.currency_requirements || item.currency_requirements.length === 0) {
+      return null;
+    }
+
+    return item.currency_requirements.map(requ => (
+      <span key={requ.id} className="inline-block mr-3 text-xs text-gray-600">
+        {requ.currency.name} : {requ.amount}개
+      </span>
+    ));
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -243,6 +256,8 @@ const EquipmentEdit = () => {
           {itemTypes.map(itemType => {
             const availableItems = getItemsForSlot(itemType);
             const selectedItem = selectedItems[itemType.id];
+            const selectedItemData = selectedItem?.item_id ? 
+              items.find(i => i.id === parseInt(selectedItem.item_id)) : null;
             
             return (
               <div key={itemType.id} className="border border-gray-200 rounded-lg p-4">
@@ -251,9 +266,9 @@ const EquipmentEdit = () => {
                     <span className="text-lg mr-2">{getItemTypeIcon(itemType.name)}</span>
                     <h3 className="font-medium text-gray-900">{itemType.name}</h3>
                   </div>
-                  {selectedItem?.item_id && items.find(i => i.id === parseInt(selectedItem.item_id)) && (
+                  {selectedItemData && (
                     <span className="text-sm text-gray-600">
-                      IL{items.find(i => i.id === parseInt(selectedItem.item_id)).item_level}
+                      IL{selectedItemData.item_level}
                     </span>
                   )}
                 </div>
@@ -272,6 +287,14 @@ const EquipmentEdit = () => {
                       </option>
                     ))}
                   </select>
+                  
+                  {/* 선택된 아이템의 재화 정보 표시 */}
+                  {selectedItemData && selectedItemData.currency_requirements && selectedItemData.currency_requirements.length > 0 && (
+                    <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
+                      <span className="text-gray-700 font-medium">필요 재화: </span>
+                      {formatCurrencyRequirements(selectedItemData)}
+                    </div>
+                  )}
                   
                   {/* 금단 옵션 (무기와 액세서리는 제외) */}
                   {selectedItem?.item_id && !['무기', '귀걸이', '목걸이', '팔찌', '반지'].includes(itemType.name) && (

@@ -117,6 +117,36 @@ export const getItems = async (raidId) => {
   }
 };
 
+// 아이템 상세 조회
+export const getItem = async (id) => {
+  try {
+    const response = await api.get(`/raids/items/${id}/`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+// 아이템 생성
+export const createItem = async (itemData) => {
+  try {
+    const response = await api.post('/raids/items/', itemData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+// 아이템 수정
+export const updateItem = async (id, itemData) => {
+  try {
+    const response = await api.patch(`/raids/items/${id}/`, itemData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 // 아이템 타입 목록 조회
 export const getItemTypes = async () => {
   try {

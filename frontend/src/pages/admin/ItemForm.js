@@ -1,36 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import {
-  getRaids,
-  getItemTypes,
+import { 
+  getRaids, 
+  getItemTypes, 
+  getCurrencies, 
   getJobs,
   createItem,
   getItem,
-  updateItem,
-  getCurrencies
+  updateItem
 } from '../../api/raids';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 import SuccessMessage from '../../components/SuccessMessage';
 
 const ItemForm = () => {
-  const { id } = useParams(); //편집 모드일 때 아이템 ID
+  const { id } = useParams(); // 편집 모드일 때 아이템 ID
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultRaidId = searchParams.get('raid');
-
+  
   const isEditMode = !!id;
-
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
+  
   const [raids, setRaids] = useState([]);
   const [itemTypes, setItemTypes] = useState([]);
   const [currencies, setCurrencies] = useState([]);
   const [jobs, setJobs] = useState([]);
-
+  
   const [formData, setFormData] = useState({
     name: '',
     item_type_id: '',
@@ -38,11 +38,12 @@ const ItemForm = () => {
     raid_id: defaultRaidId || '',
     floor: '1',
     is_weapon: false,
-    job_restrictions: []
+    job_restrictions_ids: []
   });
-
+  
   // 재화 요구사항 관리
   const [currencyRequirements, setCurrencyRequirements] = useState([]);
+  const [isExchangeItem, setIsExchangeItem] = useState(false); // 교환 아이템 여부
 
   useEffect(() => {
     fetchInitialData();
@@ -54,6 +55,11 @@ const ItemForm = () => {
     }
   }, [id]);
 
+  // 재화 요구사항이나 아이템명이 변경될 때 교환 아이템인지 확인
+  useEffect(() => {
+    checkIfExchangeItem();
+  }, [currencyRequirements, formData.name]);
+
   const fetchInitialData = async () => {
     try {
       setLoading(true);
@@ -63,7 +69,7 @@ const ItemForm = () => {
         getCurrencies(),
         getJobs()
       ]);
-
+      
       setRaids(Array.isArray(raidsData) ? raidsData : (raidsData.results || []));
       setItemTypes(Array.isArray(typesData) ? typesData : (typesData.results || []));
       setCurrencies(Array.isArray(currenciesData) ? currenciesData : (currenciesData.results || []));
@@ -86,10 +92,10 @@ const ItemForm = () => {
         name: itemData.name,
         item_type_id: itemData.item_type.id.toString(),
         item_level: itemData.item_level.toString(),
-        raid_id: itemData.raid.toString(),
-        floor: itemData.floor.toString(),
+        raid_id: itemData.raid ? itemData.raid.toString() : '',
+        floor: itemData.floor ? itemData.floor.toString() : '1',
         is_weapon: itemData.is_weapon,
-        job_restrictions: itemData.job_restrictions.map(job => job.id.toString())
+        job_restrictions_ids: itemData.job_restrictions.map(job => job.id)
       });
       
       // 재화 요구사항 설정
@@ -101,11 +107,35 @@ const ItemForm = () => {
           }))
         );
       }
+      
+      // 레이드가 없으면 교환 아이템으로 설정
+      setIsExchangeItem(!itemData.raid);
     } catch (err) {
       console.error('Failed to fetch item data:', err);
       setError('아이템 정보를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkIfExchangeItem = () => {
+    // 보강 아이템인지 확인
+    const isUpgradedItem = formData.name.includes('보강');
+    
+    // 석판 재화가 포함되어 있는지 확인
+    const hasExchangeCurrency = currencyRequirements.some(req => {
+      const currency = currencies.find(c => c.id === parseInt(req.currency_id));
+      return currency && currency.name.includes('석판') && !currency.name.includes('보강');
+    });
+    
+    if (hasExchangeCurrency || isUpgradedItem) {
+      setIsExchangeItem(true);
+      // 교환/보강 아이템이면 레이드와 층수 초기화
+      setFormData(prev => ({
+        ...prev,
+        raid_id: '',
+        floor: ''
+      }));
     }
   };
 
@@ -118,11 +148,12 @@ const ItemForm = () => {
   };
 
   const handleJobToggle = (jobId) => {
+    const numericJobId = parseInt(jobId);
     setFormData(prev => ({
       ...prev,
-      job_restrictions: prev.job_restrictions.includes(jobId)
-        ? prev.job_restrictions.filter(id => id !== jobId)
-        : [...prev.job_restrictions, jobId]
+      job_restrictions_ids: prev.job_restrictions_ids.includes(numericJobId)
+        ? prev.job_restrictions_ids.filter(id => id !== numericJobId)
+        : [...prev.job_restrictions_ids, numericJobId]
     }));
   };
 
@@ -142,12 +173,30 @@ const ItemForm = () => {
     });
   };
 
+  const handleExchangeItemToggle = (checked) => {
+    setIsExchangeItem(checked);
+    if (checked) {
+      // 교환 아이템이면 레이드와 층수 초기화
+      setFormData(prev => ({
+        ...prev,
+        raid_id: '',
+        floor: ''
+      }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // 유효성 검사
-    if (!formData.name || !formData.item_type_id || !formData.item_level || !formData.raid_id) {
+    if (!formData.name || !formData.item_type_id || !formData.item_level) {
       setError('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+    
+    // 교환 아이템이 아닌 경우에만 레이드 필수
+    if (!isExchangeItem && !formData.raid_id) {
+      setError('레이드를 선택해주세요.');
       return;
     }
     
@@ -159,10 +208,8 @@ const ItemForm = () => {
         name: formData.name,
         item_type_id: parseInt(formData.item_type_id),
         item_level: parseInt(formData.item_level),
-        raid_id: parseInt(formData.raid_id),
-        floor: parseInt(formData.floor),
         is_weapon: formData.is_weapon,
-        job_restrictions: formData.job_restrictions.map(id => parseInt(id)),
+        job_restrictions_ids: formData.job_restrictions_ids,
         currency_requirements: currencyRequirements
           .filter(req => req.currency_id && req.amount)
           .map(req => ({
@@ -170,6 +217,14 @@ const ItemForm = () => {
             amount: parseInt(req.amount)
           }))
       };
+      
+      // 교환 아이템이 아닌 경우에만 레이드와 층수 추가
+      if (!isExchangeItem) {
+        submitData.raid_id = parseInt(formData.raid_id);
+        submitData.floor = parseInt(formData.floor);
+      }
+      
+      console.log('Submitting data:', submitData);  // 디버깅용
       
       if (isEditMode) {
         await updateItem(id, submitData);
@@ -184,7 +239,20 @@ const ItemForm = () => {
       }, 1500);
     } catch (err) {
       console.error('Failed to save item:', err);
-      setError('저장에 실패했습니다.');
+      // 구체적인 에러 메시지 표시
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (typeof errorData === 'object') {
+          const errorMessages = Object.entries(errorData)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('\n');
+          setError(errorMessages);
+        } else {
+          setError(errorData);
+        }
+      } else {
+        setError('저장에 실패했습니다.');
+      }
     } finally {
       setSaving(false);
     }
@@ -198,8 +266,10 @@ const ItemForm = () => {
     );
   }
 
-  // 선택된 레이드의 재화만 필터링
-  const raidCurrencies = currencies.filter(c => c.raid === parseInt(formData.raid_id));
+  // 모든 재화 목록 (교환 아이템용)
+  const allCurrencies = currencies;
+  // 선택된 레이드의 재화만 필터링 (레이드 아이템용)
+  const raidCurrencies = formData.raid_id ? currencies.filter(c => c.raid === parseInt(formData.raid_id)) : [];
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -264,45 +334,7 @@ const ItemForm = () => {
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  레이드 *
-                </label>
-                <select
-                  name="raid_id"
-                  value={formData.raid_id}
-                  onChange={handleChange}
-                  className="mt-1 input"
-                  required
-                >
-                  <option value="">선택하세요</option>
-                  {raids.map(raid => (
-                    <option key={raid.id} value={raid.id}>
-                      {raid.name} ({raid.tier})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  층 *
-                </label>
-                <select
-                  name="floor"
-                  value={formData.floor}
-                  onChange={handleChange}
-                  className="mt-1 input"
-                  required
-                >
-                  <option value="1">1층</option>
-                  <option value="2">2층</option>
-                  <option value="3">3층</option>
-                  <option value="4">4층</option>
-                </select>
-              </div>
-              
-              <div className="flex items-center">
+              <div className="flex items-center space-x-4">
                 <label className="flex items-center">
                   <input
                     type="checkbox"
@@ -313,8 +345,69 @@ const ItemForm = () => {
                   />
                   <span className="ml-2 text-sm text-gray-700">무기 여부</span>
                 </label>
+                
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={isExchangeItem}
+                    onChange={(e) => handleExchangeItemToggle(e.target.checked)}
+                    className="rounded text-ff14-accent focus:ring-ff14-accent"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">교환 아이템 (석판/보강)</span>
+                </label>
               </div>
             </div>
+            
+            {/* 레이드/층수 (교환 아이템이 아닌 경우에만 표시) */}
+            {!isExchangeItem && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    레이드 *
+                  </label>
+                  <select
+                    name="raid_id"
+                    value={formData.raid_id}
+                    onChange={handleChange}
+                    className="mt-1 input"
+                    required={!isExchangeItem}
+                  >
+                    <option value="">선택하세요</option>
+                    {raids.map(raid => (
+                      <option key={raid.id} value={raid.id}>
+                        {raid.name} ({raid.tier})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    층 *
+                  </label>
+                  <select
+                    name="floor"
+                    value={formData.floor}
+                    onChange={handleChange}
+                    className="mt-1 input"
+                    required={!isExchangeItem}
+                  >
+                    <option value="1">1층</option>
+                    <option value="2">2층</option>
+                    <option value="3">3층</option>
+                    <option value="4">4층</option>
+                  </select>
+                </div>
+              </div>
+            )}
+            
+            {isExchangeItem && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800">
+                  💡 교환/보강 아이템은 레이드에서 직접 드롭되지 않고, 재화로 교환하거나 기존 장비를 보강하여 획득합니다.
+                </p>
+              </div>
+            )}
           </div>
           
           {/* 재화 요구사항 */}
@@ -325,51 +418,53 @@ const ItemForm = () => {
                 type="button"
                 onClick={addCurrencyRequirement}
                 className="btn btn-secondary text-sm"
-                disabled={raidCurrencies.length === 0}
               >
                 재화 추가
               </button>
             </div>
             
-            {raidCurrencies.length === 0 ? (
-              <p className="text-sm text-gray-500">레이드를 먼저 선택해주세요.</p>
-            ) : currencyRequirements.length === 0 ? (
+            {currencyRequirements.length === 0 ? (
               <p className="text-sm text-gray-500">필요한 재화가 없습니다.</p>
             ) : (
               <div className="space-y-3">
-                {currencyRequirements.map((req, index) => (
-                  <div key={index} className="flex items-center space-x-3">
-                    <select
-                      value={req.currency_id}
-                      onChange={(e) => updateCurrencyRequirement(index, 'currency_id', e.target.value)}
-                      className="flex-1 input"
-                    >
-                      <option value="">재화 선택</option>
-                      {raidCurrencies.map(currency => (
-                        <option key={currency.id} value={currency.id}>
-                          {currency.name}
-                        </option>
-                      ))}
-                    </select>
-                    
-                    <input
-                      type="number"
-                      value={req.amount}
-                      onChange={(e) => updateCurrencyRequirement(index, 'amount', e.target.value)}
-                      placeholder="수량"
-                      className="w-24 input"
-                      min="1"
-                    />
-                    
-                    <button
-                      type="button"
-                      onClick={() => removeCurrencyRequirement(index)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                ))}
+                {currencyRequirements.map((req, index) => {
+                  // 교환 아이템이면 모든 재화 표시, 아니면 레이드 재화만
+                  const availableCurrencies = isExchangeItem ? allCurrencies : raidCurrencies;
+                  
+                  return (
+                    <div key={index} className="flex items-center space-x-3">
+                      <select
+                        value={req.currency_id}
+                        onChange={(e) => updateCurrencyRequirement(index, 'currency_id', e.target.value)}
+                        className="flex-1 input"
+                      >
+                        <option value="">재화 선택</option>
+                        {availableCurrencies.map(currency => (
+                          <option key={currency.id} value={currency.id}>
+                            {currency.name}
+                          </option>
+                        ))}
+                      </select>
+                      
+                      <input
+                        type="number"
+                        value={req.amount}
+                        onChange={(e) => updateCurrencyRequirement(index, 'amount', e.target.value)}
+                        placeholder="수량"
+                        className="w-24 input"
+                        min="1"
+                      />
+                      
+                      <button
+                        type="button"
+                        onClick={() => removeCurrencyRequirement(index)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -398,8 +493,8 @@ const ItemForm = () => {
                         <label key={job.id} className="flex items-center">
                           <input
                             type="checkbox"
-                            checked={formData.job_restrictions.includes(job.id.toString())}
-                            onChange={() => handleJobToggle(job.id.toString())}
+                            checked={formData.job_restrictions_ids.includes(job.id)}
+                            onChange={() => handleJobToggle(job.id)}
                             className="rounded text-ff14-accent focus:ring-ff14-accent"
                           />
                           <span className="ml-2 text-sm">{job.name}</span>
@@ -412,7 +507,11 @@ const ItemForm = () => {
           </div>
           
           {/* 에러/성공 메시지 */}
-          {error && <ErrorMessage message={error} onClose={() => setError('')} />}
+          {error && (
+            <div className="whitespace-pre-wrap">
+              <ErrorMessage message={error} onClose={() => setError('')} />
+            </div>
+          )}
           {success && <SuccessMessage message={success} />}
           
           {/* 버튼 */}

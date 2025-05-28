@@ -114,8 +114,8 @@ class Item(models.Model):
     name = models.CharField(max_length=100, verbose_name='아이템명')
     item_type = models.ForeignKey(ItemType, on_delete=models.CASCADE, related_name='items', verbose_name='종류')
     item_level = models.IntegerField(verbose_name='아이템레벨')
-    raid = models.ForeignKey(Raid, on_delete=models.CASCADE, related_name='items', verbose_name='획득처')
-    floor = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(4)], verbose_name='층')
+    raid = models.ForeignKey(Raid, on_delete=models.CASCADE, related_name='items', verbose_name='획득처', null=True, blank=True)
+    floor = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(4)], verbose_name='층', null=True, blank=True)
     is_weapon = models.BooleanField(default=False, verbose_name='무기 여부')
     job_restrictions = models.ManyToManyField(Job, blank=True, related_name='restricted_items', verbose_name='직업 제한')
     

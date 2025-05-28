@@ -87,14 +87,22 @@ class ItemSerializer(serializers.ModelSerializer):
     item_type_id = serializers.PrimaryKeyRelatedField(
         queryset=ItemType.objects.all(), source='item_type', write_only=True
     )
+    raid = RaidSerializer(read_only=True)
+    raid_id = serializers.PrimaryKeyRelatedField(
+        queryset=Raid.objects.all(), source='raid', write_only=True
+    )
     job_restrictions = JobSerializer(many=True, read_only=True)
+    job_restrictions_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Job.objects.all(), source='job_restrictions', 
+        write_only=True, many=True, required=False
+    )
     currency_requirements = CurrencyRequirementSerializer(many=True, read_only=True)
     
     class Meta:
         model = Item
         fields = ['id', 'name', 'item_type', 'item_type_id', 'item_level', 
-                 'raid', 'floor', 'is_weapon', 'job_restrictions', 
-                 'currency_requirements']
+                 'raid', 'raid_id', 'floor', 'is_weapon', 'job_restrictions', 
+                 'job_restrictions_ids', 'currency_requirements']
 
 
 class EquipmentSerializer(serializers.ModelSerializer):
