@@ -4,11 +4,12 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 User = get_user_model()
 
+
 class Raid(models.Model):
     """레이드 정보"""
     name = models.CharField(max_length=100, verbose_name='레이드명')
-    tier = models.CharField(max_length=20, verbose_name='난이도') # 예: 영웅
-    patch = models.CharField(max_length=10, verbose_name='패치') # 예: 7.0
+    tier = models.CharField(max_length=20, verbose_name='단계')  # 예: 영웅
+    patch = models.CharField(max_length=10, verbose_name='패치')  # 예: 7.0
     min_ilvl = models.IntegerField(verbose_name='최소 아이템레벨')
     max_ilvl = models.IntegerField(verbose_name='최대 아이템레벨')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -18,9 +19,11 @@ class Raid(models.Model):
         verbose_name = '레이드'
         verbose_name_plural = '레이드 목록'
         db_table = 'raids'
+        ordering = ['id']
     
     def __str__(self):
         return f"{self.name} ({self.tier})"
+
 
 class RaidGroup(models.Model):
     """공대 정보"""
@@ -43,7 +46,8 @@ class RaidGroup(models.Model):
         db_table = 'raid_groups'
     
     def __str__(self):
-        return f"{self.name} = {self.raid.name}"
+        return f"{self.name} - {self.raid.name}"
+
 
 class Job(models.Model):
     """직업 정보"""
@@ -63,9 +67,11 @@ class Job(models.Model):
         verbose_name = '직업'
         verbose_name_plural = '직업 목록'
         db_table = 'jobs'
+        ordering = ['role', 'name']
     
     def __str__(self):
         return self.name
+
 
 class Player(models.Model):
     """공대원 정보"""
@@ -86,6 +92,7 @@ class Player(models.Model):
     def __str__(self):
         return f"{self.character_name} ({self.job.name if self.job else 'N/A'})"
 
+
 class ItemType(models.Model):
     """아이템 종류"""
     name = models.CharField(max_length=30, unique=True, verbose_name='종류명')
@@ -100,6 +107,7 @@ class ItemType(models.Model):
     
     def __str__(self):
         return self.name
+
 
 class Item(models.Model):
     """아이템 정보"""
@@ -119,6 +127,7 @@ class Item(models.Model):
     def __str__(self):
         return f"{self.name} (IL{self.item_level})"
 
+
 class Currency(models.Model):
     """재화 정보"""
     name = models.CharField(max_length=50, unique=True, verbose_name='재화명')
@@ -132,6 +141,7 @@ class Currency(models.Model):
     
     def __str__(self):
         return self.name
+
 
 class EquipmentSet(models.Model):
     """장비 세트"""
@@ -174,6 +184,7 @@ class EquipmentSet(models.Model):
         
         return round(total_ilvl / count) if count > 0 else 0
 
+
 class Equipment(models.Model):
     """장비 세트의 개별 장비"""
     equipment_set = models.ForeignKey(EquipmentSet, on_delete=models.CASCADE, related_name='equipments', verbose_name='장비 세트')
@@ -188,6 +199,7 @@ class Equipment(models.Model):
     
     def __str__(self):
         return f"{self.equipment_set} - {self.item.name}"
+
 
 class ItemDistribution(models.Model):
     """아이템 분배 기록"""
@@ -204,7 +216,8 @@ class ItemDistribution(models.Model):
         db_table = 'item_distributions'
     
     def __str__(self):
-        return f"{self.player.character_name} = {self.item.name} ({self.week_number}주차)"
+        return f"{self.player.character_name} - {self.item.name} ({self.week_number}주차)"
+
 
 class RaidSchedule(models.Model):
     """레이드 일정"""
@@ -237,6 +250,7 @@ class RaidSchedule(models.Model):
     
     def __str__(self):
         return f"{self.raid_group.name} - {self.get_weekday_display()} {self.start_time}"
+
 
 class CurrencyRequirement(models.Model):
     """아이템 구매에 필요한 재화"""

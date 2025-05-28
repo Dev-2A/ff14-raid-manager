@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { getCurrentUser, login as apiLogin, logout as apiLogout } from '../api/auth';
+import { setToken, removeToken } from '../api/config';
 
 const AuthContext = createContext();
 
@@ -24,10 +25,16 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     try {
       setLoading(true);
-      const userData = await getCurrentUser();
-      setUser(userData);
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        const userData = await getCurrentUser();
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
     } catch (err) {
       setUser(null);
+      removeToken();
     } finally {
       setLoading(false);
     }
@@ -37,6 +44,9 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await apiLogin(credentials);
+      if (response.token) {
+        setToken(response.token);
+      }
       setUser(response.user);
       return response;
     } catch (err) {
@@ -48,11 +58,12 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await apiLogout();
-      setUser(null);
     } catch (err) {
       console.error('Logout error:', err);
+    } finally {
       // 로그아웃 실패해도 로컬 상태는 초기화
       setUser(null);
+      removeToken();
     }
   };
 
@@ -66,5 +77,5 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};

@@ -1,15 +1,19 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import Layout from './components/Layouts';
+import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
 
+// 페이지 컴포넌트들
+import Home from './pages/Home';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import Dashboard from './pages/dashboard/Dashboard';
+import RaidGroupsList from './pages/raids/RaidGroupsList';
+import RaidGroupCreate from './pages/raids/RaidGroupCreate';
+import RaidGroupDetail from './pages/raids/RaidGroupDetail';
+
 // 페이지 컴포넌트들 (임시 - 나중에 실제 파일로 대체)
-const Home = () => <div className="p-4">홈 페이지</div>;
-const Login = () => <div className="p-4">로그인 페이지</div>;
-const Register = () => <div className="p-4">회원가입 페이지</div>;
-const Dashboard = () => <div className="p-4">대시보드</div>;
-const RaidGroups = () => <div className="p-4">공대 관리</div>;
 const Equipment = () => <div className="p-4">장비 관리</div>;
 const Distribution = () => <div className="p-4">아이템 분배</div>;
 
@@ -21,12 +25,12 @@ function App() {
           <Routes>
             {/* 공개 라우트 */}
             <Route path="/" element={<Home />} />
-            <Route path='/login' element={<Login />} />
-            <Route path='/register' element={<Register />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
             {/* 보호된 라우트 */}
             <Route
-              path='/dashboard'
+              path="/dashboard"
               element={
                 <PrivateRoute>
                   <Dashboard />
@@ -34,15 +38,31 @@ function App() {
               }
             />
             <Route
-              path='/raid-groups'
+              path="/raid-groups"
               element={
                 <PrivateRoute>
-                  <RaidGroups />
+                  <RaidGroupsList />
                 </PrivateRoute>
               }
             />
             <Route
-              path='/equipment'
+              path="/raid-groups/create"
+              element={
+                <PrivateRoute>
+                  <RaidGroupCreate />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/raid-groups/:id"
+              element={
+                <PrivateRoute>
+                  <RaidGroupDetail />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/equipment"
               element={
                 <PrivateRoute>
                   <Equipment />
@@ -50,7 +70,7 @@ function App() {
               }
             />
             <Route
-              path='/distribution'
+              path="/distribution"
               element={
                 <PrivateRoute>
                   <Distribution />
@@ -59,7 +79,7 @@ function App() {
             />
 
             {/* 404 처리 */}
-            <Route path='*' element={<Navigate to="/" />} />
+            <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Layout>
       </AuthProvider>

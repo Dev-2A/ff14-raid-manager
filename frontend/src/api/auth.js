@@ -1,9 +1,12 @@
-import api from './config';
+import api, { setToken } from './config';
 
 // 회원가입
 export const register = async (userData) => {
   try {
     const response = await api.post('/accounts/register/', userData);
+    if (response.data.token) {
+      setToken(response.data.token);
+    }
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;

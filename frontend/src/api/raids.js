@@ -43,7 +43,7 @@ export const getMyRaidGroups = async () => {
 // 공대 상세 조회
 export const getRaidGroup = async (id) => {
   try {
-    const response = await api.get(`/raids/groups/${id}`);
+    const response = await api.get(`/raids/groups/${id}/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -91,10 +91,13 @@ export const getJobs = async () => {
 };
 
 // 공대원 목록 조회
-export const getPlayers = async (raidGroupId) => {
+export const getPlayers = async (raidGroupId, activeOnly = true) => {
   try {
     const response = await api.get('/raids/players/', {
-      params: { raid_group: raidGroupId }
+      params: { 
+        raid_group: raidGroupId,
+        active_only: activeOnly
+      }
     });
     return response.data;
   } catch (error) {

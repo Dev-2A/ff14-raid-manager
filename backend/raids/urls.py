@@ -5,6 +5,7 @@ from . import views
 app_name = 'raids'
 
 router = DefaultRouter()
+router.register(r'raids', views.RaidViewSet)
 router.register(r'groups', views.RaidGroupViewSet)
 router.register(r'jobs', views.JobViewSet)
 router.register(r'players', views.PlayerViewSet)
